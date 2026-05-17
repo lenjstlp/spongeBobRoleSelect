@@ -1,0 +1,16 @@
+<svg width="720" height="960" viewBox="0 0 720 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="960" rx="48" fill="#77B7F0"/>
+  <circle cx="548" cy="176" r="94" fill="#D8ECFF" fill-opacity="0.58"/>
+  <circle cx="184" cy="756" r="142" fill="#4B8FD4" fill-opacity="0.42"/>
+  <path d="M166 524C166 430 242 354 336 354H434C506 354 564 412 564 484C564 556 506 614 434 614H254C206 614 166 574 166 524Z" fill="#B5DF63"/>
+  <circle cx="470" cy="428" r="126" fill="#F8B5C5"/>
+  <path d="M418 366C446 334 492 326 530 350C568 374 590 422 584 470C578 518 544 560 498 574" stroke="#D86887" stroke-width="18" stroke-linecap="round"/>
+  <path d="M278 346L278 220" stroke="#B5DF63" stroke-width="16" stroke-linecap="round"/>
+  <path d="M360 346L360 220" stroke="#B5DF63" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="278" cy="190" r="36" fill="white"/>
+  <circle cx="360" cy="190" r="36" fill="white"/>
+  <circle cx="286" cy="198" r="14" fill="#243B53"/>
+  <circle cx="352" cy="198" r="14" fill="#243B53"/>
+  <text x="72" y="806" fill="#243B53" font-family="Arial, sans-serif" font-size="58" font-weight="700">Gary</text>
+  <text x="72" y="876" fill="#243B53" fill-opacity="0.72" font-family="Arial, sans-serif" font-size="30">Meow Meow</text>
+</svg>

@@ -1,0 +1,14 @@
+<svg width="720" height="960" viewBox="0 0 720 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="960" rx="48" fill="#F7D547"/>
+  <circle cx="562" cy="170" r="96" fill="#FFF5B3" fill-opacity="0.65"/>
+  <circle cx="190" cy="748" r="142" fill="#F2B705" fill-opacity="0.5"/>
+  <rect x="142" y="188" width="436" height="436" rx="72" fill="#FFF5B3" fill-opacity="0.95"/>
+  <circle cx="276" cy="372" r="56" fill="white"/>
+  <circle cx="444" cy="372" r="56" fill="white"/>
+  <circle cx="290" cy="390" r="18" fill="#243B53"/>
+  <circle cx="430" cy="390" r="18" fill="#243B53"/>
+  <rect x="308" y="428" width="104" height="32" rx="16" fill="#C97B1C"/>
+  <path d="M278 500C314 540 406 540 442 500" stroke="#8C3C13" stroke-width="22" stroke-linecap="round"/>
+  <text x="72" y="806" fill="#243B53" font-family="Arial, sans-serif" font-size="58" font-weight="700">SpongeBob</text>
+  <text x="72" y="876" fill="#243B53" fill-opacity="0.7" font-family="Arial, sans-serif" font-size="30">Bikini Bottom</text>
+</svg>

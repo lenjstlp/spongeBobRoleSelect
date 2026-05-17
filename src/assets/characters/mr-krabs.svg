@@ -1,0 +1,15 @@
+<svg width="720" height="960" viewBox="0 0 720 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="960" rx="48" fill="#E44D5E"/>
+  <circle cx="556" cy="170" r="96" fill="#FFD5D9" fill-opacity="0.56"/>
+  <circle cx="182" cy="746" r="148" fill="#C92D43" fill-opacity="0.42"/>
+  <rect x="180" y="244" width="360" height="300" rx="150" fill="#FFD5D9"/>
+  <ellipse cx="292" cy="270" rx="34" ry="114" fill="#FFD5D9"/>
+  <ellipse cx="428" cy="270" rx="34" ry="114" fill="#FFD5D9"/>
+  <circle cx="292" cy="240" r="28" fill="white"/>
+  <circle cx="428" cy="240" r="28" fill="white"/>
+  <circle cx="292" cy="244" r="12" fill="#1F2937"/>
+  <circle cx="428" cy="244" r="12" fill="#1F2937"/>
+  <path d="M296 448C334 484 386 484 424 448" stroke="#8C1D2F" stroke-width="18" stroke-linecap="round"/>
+  <text x="72" y="806" fill="#1F2937" font-family="Arial, sans-serif" font-size="58" font-weight="700">Mr. Krabs</text>
+  <text x="72" y="876" fill="#1F2937" fill-opacity="0.72" font-family="Arial, sans-serif" font-size="30">Krusty Krab</text>
+</svg>
