@@ -196,7 +196,8 @@ export default function App() {
   }
 
   function getTouchDistance(event: TouchEvent<HTMLDivElement>) {
-    const [firstTouch, secondTouch] = event.touches
+    const firstTouch = event.touches[0]
+    const secondTouch = event.touches[1]
     if (!firstTouch || !secondTouch) {
       return 0
     }
@@ -489,7 +490,7 @@ export default function App() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3 overflow-y-auto pr-1">
-                {characters.map((character) => (
+                {characters.map((character, index) => (
                   <motion.article
                     key={character.id}
                     initial={{ opacity: 0, y: 12 }}
@@ -501,7 +502,7 @@ export default function App() {
                       type="button"
                       className="block w-full text-left"
                       onClick={() => {
-                        setCurrentIndex(character.index)
+                        setCurrentIndex(index)
                         closeRoleList()
                       }}
                     >
