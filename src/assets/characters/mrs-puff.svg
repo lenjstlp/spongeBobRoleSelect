@@ -1,0 +1,16 @@
+<svg width="720" height="960" viewBox="0 0 720 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="720" height="960" rx="48" fill="#F6C36A"/>
+  <circle cx="552" cy="170" r="98" fill="#FFE0A6" fill-opacity="0.64"/>
+  <circle cx="182" cy="748" r="144" fill="#E39B3C" fill-opacity="0.36"/>
+  <circle cx="360" cy="404" r="208" fill="#FFD789"/>
+  <circle cx="286" cy="356" r="44" fill="white"/>
+  <circle cx="434" cy="356" r="44" fill="white"/>
+  <circle cx="298" cy="368" r="14" fill="#243B53"/>
+  <circle cx="422" cy="368" r="14" fill="#243B53"/>
+  <ellipse cx="360" cy="438" rx="82" ry="58" fill="#F3A18B"/>
+  <path d="M300 486C334 520 386 520 420 486" stroke="#8F4F26" stroke-width="16" stroke-linecap="round"/>
+  <path d="M248 548C286 520 434 520 472 548V706H248V548Z" fill="#5DB2A8"/>
+  <rect x="326" y="534" width="68" height="42" rx="21" fill="#FFF4C7"/>
+  <text x="72" y="806" fill="#243B53" font-family="Arial, sans-serif" font-size="58" font-weight="700">Mrs. Puff</text>
+  <text x="72" y="876" fill="#243B53" fill-opacity="0.72" font-family="Arial, sans-serif" font-size="30">Boating School</text>
+</svg>

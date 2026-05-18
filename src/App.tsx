@@ -10,7 +10,7 @@ type FormState = {
   note: string
 }
 
-type Screen = "home" | "list" | "detail"
+type Screen = "home" | "list" | "detail" | "random"
 
 type RouteState = {
   screen: Screen
@@ -25,6 +25,22 @@ type DetailGestureState = {
   startDistance: number
   startOffsetX: number
   startOffsetY: number
+}
+
+type RectangleSlot = {
+  x: number
+  y: number
+}
+
+type RandomTrackMetrics = {
+  cardWidth: number
+  cardHeight: number
+  stepX: number
+  stepY: number
+  cols: number
+  rows: number
+  centerCardWidth: number
+  stageHeight: number
 }
 
 function getCircularOffset(index: number, activeIndex: number, total: number) {
@@ -47,6 +63,10 @@ function resolveRoute(pathname: string, characters: CharacterCard[]): RouteState
     return { screen: "list" }
   }
 
+  if (pathname === "/random") {
+    return { screen: "random" }
+  }
+
   if (pathname.startsWith("/roles/")) {
     const roleId = decodeURIComponent(pathname.replace("/roles/", ""))
     const roleIndex = characters.findIndex((character) => character.id === roleId)
@@ -61,6 +81,156 @@ function resolveRoute(pathname: string, characters: CharacterCard[]): RouteState
   return { screen: "home" }
 }
 
+function getBorderGridDimensions(total: number) {
+  const target = Math.max(total, 4)
+  let bestCols = 3
+  let bestRows = 3
+  let bestScore = Number.POSITIVE_INFINITY
+
+  for (let rows = 2; rows <= 7; rows += 1) {
+    for (let cols = 2; cols <= 8; cols += 1) {
+      const capacity = cols * 2 + (rows - 2) * 2
+      if (capacity < target) {
+        continue
+      }
+
+      const overflow = capacity - target
+      const ratioPenalty = Math.abs(cols / rows - 1.2)
+      const shapePenalty = cols < rows ? 0.8 : 0
+      const score = overflow * 100 + ratioPenalty * 18 + cols * rows + shapePenalty
+
+      if (score < bestScore) {
+        bestScore = score
+        bestCols = cols
+        bestRows = rows
+      }
+    }
+  }
+
+  return {
+    cols: bestCols,
+    rows: bestRows
+  }
+}
+
+function getRandomTrackMetrics(total: number): RandomTrackMetrics {
+  const { cols, rows } = getBorderGridDimensions(total)
+
+  if (total <= 8) {
+    const cardWidth = 74
+    const cardHeight = 92
+    const stepX = 106
+    const stepY = 122
+    return {
+      cardWidth,
+      cardHeight,
+      stepX,
+      stepY,
+      cols,
+      rows,
+      centerCardWidth: 132,
+      stageHeight: Math.max(470, (rows - 1) * stepY + cardHeight + 44)
+    }
+  }
+
+  if (total <= 12) {
+    const cardWidth = 64
+    const cardHeight = 80
+    const stepX = 86
+    const stepY = 102
+    return {
+      cardWidth,
+      cardHeight,
+      stepX,
+      stepY,
+      cols,
+      rows,
+      centerCardWidth: 128,
+      stageHeight: Math.max(468, (rows - 1) * stepY + cardHeight + 46)
+    }
+  }
+
+  const cardWidth = 56
+  const cardHeight = 70
+  const stepX = 72
+  const stepY = 86
+  return {
+    cardWidth,
+    cardHeight,
+    stepX,
+    stepY,
+    cols,
+    rows,
+    centerCardWidth: 122,
+    stageHeight: Math.max(464, (rows - 1) * stepY + cardHeight + 48)
+  }
+}
+
+function getRectangleSlots(total: number, metrics: RandomTrackMetrics): RectangleSlot[] {
+  if (total <= 0) {
+    return []
+  }
+
+  const borderCells: Array<{ col: number; row: number }> = []
+
+  for (let col = 0; col < metrics.cols; col += 1) {
+    borderCells.push({ col, row: 0 })
+  }
+
+  for (let row = 1; row < metrics.rows - 1; row += 1) {
+    borderCells.push({ col: metrics.cols - 1, row })
+  }
+
+  for (let col = metrics.cols - 1; col >= 0; col -= 1) {
+    borderCells.push({ col, row: metrics.rows - 1 })
+  }
+
+  for (let row = metrics.rows - 2; row >= 1; row -= 1) {
+    borderCells.push({ col: 0, row })
+  }
+
+  const middleCol = (metrics.cols - 1) / 2
+  let startIndex = 0
+  let bestDistance = Number.POSITIVE_INFINITY
+
+  for (let index = 0; index < borderCells.length; index += 1) {
+    const cell = borderCells[index]
+    if (cell.row !== 0) {
+      continue
+    }
+
+    const distance = Math.abs(cell.col - middleCol)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      startIndex = index
+    }
+  }
+
+  const orderedBorderCells = [
+    ...borderCells.slice(startIndex),
+    ...borderCells.slice(0, startIndex)
+  ]
+
+  const chosenIndices = new Set<number>()
+
+  return Array.from({ length: total }, (_, index) => {
+    let slotIndex = Math.floor((index * orderedBorderCells.length) / total)
+
+    while (chosenIndices.has(slotIndex)) {
+      slotIndex = (slotIndex + 1) % orderedBorderCells.length
+    }
+
+    chosenIndices.add(slotIndex)
+
+    const cell = orderedBorderCells[slotIndex]
+
+    return {
+      x: (cell.col - (metrics.cols - 1) / 2) * metrics.stepX,
+      y: (cell.row - (metrics.rows - 1) / 2) * metrics.stepY
+    }
+  })
+}
+
 export default function App() {
   const [characters, setCharacters] = useState(initialCharacters)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -71,7 +241,12 @@ export default function App() {
       ? "home"
       : resolveRoute(window.location.pathname, initialCharacters).screen
   )
+  const [randomHighlightIndex, setRandomHighlightIndex] = useState(0)
+  const [randomResultId, setRandomResultId] = useState<string | null>(null)
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([])
+  const [isRandomSpinning, setIsRandomSpinning] = useState(false)
   const touchStartXRef = useRef<number | null>(null)
+  const randomTimeoutRef = useRef<number | null>(null)
   const detailGestureRef = useRef<DetailGestureState>({
     mode: "idle",
     startX: 0,
@@ -105,13 +280,6 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [characters.length, rotateIntervalSeconds, screen])
 
-  const activeCharacter = characters[currentIndex]
-  const visibleCharacters = characters.map((character, index) => ({
-    index,
-    ...character,
-    offset: getCircularOffset(index, currentIndex, characters.length)
-  }))
-
   useEffect(() => {
     const route = resolveRoute(window.location.pathname, characters)
 
@@ -131,6 +299,59 @@ export default function App() {
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
   }, [characters])
+
+  useEffect(() => {
+    return () => {
+      if (randomTimeoutRef.current !== null) {
+        window.clearTimeout(randomTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const activeCharacter = characters[currentIndex]
+  const visibleCharacters = characters.map((character, index) => ({
+    index,
+    ...character,
+    offset: getCircularOffset(index, currentIndex, characters.length)
+  }))
+  const availableRandomCharacters = characters.filter(
+    (character) => !selectedRoleIds.includes(character.id)
+  )
+  const selectedCharacters = selectedRoleIds
+    .map((id) => characters.find((character) => character.id === id) ?? null)
+    .filter((character): character is CharacterCard => character !== null)
+  const randomSelectedCharacter =
+    randomResultId === null
+      ? null
+      : characters.find((character) => character.id === randomResultId) ?? null
+  const randomHighlightCharacter =
+    availableRandomCharacters.length === 0
+      ? null
+      : availableRandomCharacters[
+          Math.min(randomHighlightIndex, availableRandomCharacters.length - 1)
+        ]
+  const randomTrackMetrics = getRandomTrackMetrics(availableRandomCharacters.length)
+  const randomSlots = getRectangleSlots(
+    availableRandomCharacters.length,
+    randomTrackMetrics
+  )
+  const currentRandomSlot =
+    availableRandomCharacters.length === 0
+      ? null
+      : randomSlots[
+          Math.min(randomHighlightIndex, availableRandomCharacters.length - 1)
+        ] ?? null
+
+  useEffect(() => {
+    if (availableRandomCharacters.length === 0) {
+      setRandomHighlightIndex(0)
+      return
+    }
+
+    if (randomHighlightIndex > availableRandomCharacters.length - 1) {
+      setRandomHighlightIndex(0)
+    }
+  }, [availableRandomCharacters.length, randomHighlightIndex])
 
   function showPreviousCharacter() {
     setCurrentIndex((current) => (current - 1 + characters.length) % characters.length)
@@ -184,11 +405,23 @@ export default function App() {
     setScreen("detail")
   }
 
+  function openRandom() {
+    window.history.pushState({}, "", "/random")
+    setScreen("random")
+  }
+
   function closeDetail() {
     window.history.pushState({}, "", "/")
     setScreen("home")
     setDetailScale(1)
     setDetailOffset({ x: 0, y: 0 })
+  }
+
+  function closeRandom() {
+    clearRandomTimers()
+    setIsRandomSpinning(false)
+    window.history.pushState({}, "", "/")
+    setScreen("home")
   }
 
   function clampScale(nextScale: number) {
@@ -278,6 +511,63 @@ export default function App() {
     })
   }
 
+  function clearRandomTimers() {
+    if (randomTimeoutRef.current !== null) {
+      window.clearTimeout(randomTimeoutRef.current)
+      randomTimeoutRef.current = null
+    }
+  }
+
+  function startRandomSelection() {
+    if (isRandomSpinning || availableRandomCharacters.length === 0) {
+      return
+    }
+
+    clearRandomTimers()
+    setIsRandomSpinning(true)
+    setRandomResultId(null)
+
+    const spinPool = [...availableRandomCharacters]
+    const steps =
+      spinPool.length * 2 + Math.floor(Math.random() * spinPool.length) + 3
+    let currentIndex = Math.min(randomHighlightIndex, spinPool.length - 1)
+    const startDelay = 60
+    const endDelay = 240
+
+    function runSpin(step: number) {
+      randomTimeoutRef.current = window.setTimeout(() => {
+        currentIndex = (currentIndex + 1) % spinPool.length
+        setRandomHighlightIndex(currentIndex)
+
+        if (step >= steps) {
+          const winner = spinPool[currentIndex]
+          setRandomResultId(winner.id)
+          setSelectedRoleIds((current) => [...current, winner.id])
+          const nextCurrentIndex = characters.findIndex(
+            (character) => character.id === winner.id
+          )
+          if (nextCurrentIndex >= 0) {
+            setCurrentIndex(nextCurrentIndex)
+          }
+          setIsRandomSpinning(false)
+          return
+        }
+
+        runSpin(step + 1)
+      }, startDelay + ((endDelay - startDelay) * step) / steps)
+    }
+
+    runSpin(0)
+  }
+
+  function resetRandomSelection() {
+    clearRandomTimers()
+    setIsRandomSpinning(false)
+    setRandomResultId(null)
+    setRandomHighlightIndex(0)
+    setSelectedRoleIds([])
+  }
+
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) {
@@ -341,132 +631,136 @@ export default function App() {
         {screen === "home" ? (
           <div className="mt-6 flex flex-1 flex-col gap-4">
             <section className="relative flex-1 overflow-hidden rounded-[10px] border border-border/70 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeCharacter.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
-                className="absolute inset-0"
-              >
-                <img
-                  src={activeCharacter.image}
-                  alt=""
-                  aria-hidden="true"
-                  className="h-full w-full scale-110 object-cover blur-2xl"
-                />
-                <div className="absolute inset-0 bg-white/68" />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.52)_35%,rgba(255,255,255,0.92)_100%)]" />
-              </motion.div>
-            </AnimatePresence>
-            <div className="relative flex h-full flex-col">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">角色卡片轮播</div>
-                <label className="rounded-full bg-white/85 px-3 py-1 text-xs text-muted-foreground shadow-sm">
-                  <span className="sr-only">自动切换频率</span>
-                  <select
-                    value={String(rotateIntervalSeconds)}
-                    onChange={(event) =>
-                      setRotateIntervalSeconds(Number(event.target.value))
-                    }
-                    className="bg-transparent pr-1 outline-none"
-                  >
-                    <option value="3">3 秒</option>
-                    <option value="5">5 秒</option>
-                    <option value="9">9 秒</option>
-                    <option value="0">不自动切</option>
-                  </select>
-                </label>
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeCharacter.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  className="absolute inset-0"
+                >
+                  <img
+                    src={activeCharacter.image}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-full w-full scale-110 object-cover blur-2xl"
+                  />
+                  <div className="absolute inset-0 bg-white/68" />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.52)_35%,rgba(255,255,255,0.92)_100%)]" />
+                </motion.div>
+              </AnimatePresence>
 
-              <div
-                className="relative mt-4 min-h-[360px] overflow-hidden [perspective:1800px]"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              >
-                <div className="absolute inset-0">
-                  {visibleCharacters.map((character) => {
-                    const absOffset = Math.abs(character.offset)
-                    const isCenter = character.offset === 0
-                    const isHidden = absOffset > Math.floor(characters.length / 2)
-                    const direction = character.offset === 0 ? 0 : character.offset > 0 ? 1 : -1
-                    const shiftByDepth = [0, 124, 168, 198]
-                    const widthByDepth = ["64%", "18%", "13%", "10%"]
-                    const heightByDepth = ["100%", "78%", "70%", "62%"]
-                    const depthIndex = Math.min(absOffset, 3)
-                    const baseShift = shiftByDepth[depthIndex]
-                    const translateX = direction * baseShift
-                    const rotateY = isCenter ? 0 : direction * -82
-                    const scale = isCenter ? 1 : Math.max(0.8, 0.95 - depthIndex * 0.05)
-                    const opacity = isHidden ? 0 : isCenter ? 1 : Math.max(0.5, 0.98 - depthIndex * 0.14)
-                    const cardWidth = widthByDepth[depthIndex]
-                    const cardHeight = heightByDepth[depthIndex]
-                    const shadow = "0 16px 50px rgba(15,23,42,0.1)"
+              <div className="relative flex h-full flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">角色卡片轮播</div>
+                  <label className="rounded-full bg-white/85 px-3 py-1 text-xs text-muted-foreground shadow-sm">
+                    <span className="sr-only">自动切换频率</span>
+                    <select
+                      value={String(rotateIntervalSeconds)}
+                      onChange={(event) =>
+                        setRotateIntervalSeconds(Number(event.target.value))
+                      }
+                      className="bg-transparent pr-1 outline-none"
+                    >
+                      <option value="3">3 秒</option>
+                      <option value="5">5 秒</option>
+                      <option value="9">9 秒</option>
+                      <option value="0">不自动切</option>
+                    </select>
+                  </label>
+                </div>
 
-                    return (
-                      <div
-                        key={character.id}
-                        style={{
-                          zIndex: isCenter ? 40 : 20 - absOffset
-                        }}
-                        className="pointer-events-none absolute inset-0"
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <motion.button
-                            type="button"
-                            className="pointer-events-auto overflow-hidden rounded-[10px] border border-white/70 bg-white text-left"
-                            animate={{
-                              x: translateX,
-                              rotateY,
-                              scale,
-                              opacity
-                            }}
-                            transition={{ duration: 0.55, ease: "easeInOut" }}
-                            style={{
-                              pointerEvents: isHidden ? "none" : "auto",
-                              transformStyle: "preserve-3d",
-                              transformOrigin:
-                                direction < 0 ? "right center" : direction > 0 ? "left center" : "center center",
-                              width: cardWidth,
-                              height: cardHeight,
-                              boxShadow: shadow
-                            }}
-                            onClick={() => {
-                              if (isCenter) {
-                                openDetail()
-                                return
-                              }
+                <div
+                  className="relative mt-4 min-h-[360px] overflow-hidden [perspective:1800px]"
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <div className="absolute inset-0">
+                    {visibleCharacters.map((character) => {
+                      const absOffset = Math.abs(character.offset)
+                      const isCenter = character.offset === 0
+                      const isHidden = absOffset > Math.floor(characters.length / 2)
+                      const direction = character.offset === 0 ? 0 : character.offset > 0 ? 1 : -1
+                      const shiftByDepth = [0, 124, 168, 198]
+                      const widthByDepth = ["64%", "18%", "13%", "10%"]
+                      const heightByDepth = ["100%", "78%", "70%", "62%"]
+                      const depthIndex = Math.min(absOffset, 3)
+                      const baseShift = shiftByDepth[depthIndex]
+                      const translateX = direction * baseShift
+                      const rotateY = isCenter ? 0 : direction * -82
+                      const scale = isCenter ? 1 : Math.max(0.8, 0.95 - depthIndex * 0.05)
+                      const opacity = isHidden ? 0 : isCenter ? 1 : Math.max(0.5, 0.98 - depthIndex * 0.14)
+                      const cardWidth = widthByDepth[depthIndex]
+                      const cardHeight = heightByDepth[depthIndex]
 
-                              setCurrentIndex(character.index)
-                            }}
-                          >
-                            <img
-                              src={character.image}
-                              alt={character.name}
-                              className="h-full w-full object-cover"
-                            />
-                          </motion.button>
+                      return (
+                        <div
+                          key={character.id}
+                          className="pointer-events-none absolute inset-0"
+                          style={{
+                            zIndex: isCenter ? 40 : 20 - absOffset
+                          }}
+                        >
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.button
+                              type="button"
+                              className="pointer-events-auto overflow-hidden rounded-[10px] border border-white/70 bg-white text-left"
+                              animate={{
+                                x: translateX,
+                                rotateY,
+                                scale,
+                                opacity
+                              }}
+                              transition={{ duration: 0.55, ease: "easeInOut" }}
+                              style={{
+                                pointerEvents: isHidden ? "none" : "auto",
+                                transformStyle: "preserve-3d",
+                                transformOrigin:
+                                  direction < 0 ? "right center" : direction > 0 ? "left center" : "center center",
+                                width: cardWidth,
+                                height: cardHeight,
+                                boxShadow: "0 16px 50px rgba(15,23,42,0.1)"
+                              }}
+                              onClick={() => {
+                                if (isCenter) {
+                                  openDetail()
+                                  return
+                                }
+
+                                setCurrentIndex(character.index)
+                              }}
+                            >
+                              <img
+                                src={character.image}
+                                alt={character.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </motion.button>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-full px-6"
+                    onClick={openRandom}
+                  >
+                    随机选择
+                  </Button>
+                </div>
+
+                <div className="mt-4 rounded-[10px] border border-border/70 bg-slate-50/90 p-4">
+                  <p className="text-sm text-muted-foreground">角色介绍</p>
+                  <p className="mt-2 text-sm leading-6 text-foreground/82">
+                    {activeCharacter.note}
+                  </p>
                 </div>
               </div>
-
-              <div className="mt-4 flex justify-center">
-                <div className="rounded-full bg-slate-100 px-4 py-2 text-xs text-muted-foreground shadow-sm">
-                  左右滑动或点击卡片切换
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-[10px] border border-border/70 bg-slate-50/90 p-4">
-                <p className="text-sm text-muted-foreground">角色介绍</p>
-                <p className="mt-2 text-sm leading-6 text-foreground/82">
-                  {activeCharacter.note}
-                </p>
-              </div>
-            </div>
             </section>
 
             <Button
@@ -476,89 +770,246 @@ export default function App() {
               新增角色
             </Button>
           </div>
-        ) : (
-          screen === "list" ? (
-            <section className="mt-6 flex min-h-0 flex-1 flex-col rounded-[10px] border border-border/70 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">角色列表</p>
-                  <h2 className="mt-1 text-xl font-semibold">一个个卡片排布</h2>
-                </div>
-                <Button variant="outline" className="h-10 rounded-2xl" onClick={closeRoleList}>
-                  返回
-                </Button>
+        ) : screen === "list" ? (
+          <section className="mt-6 flex min-h-0 flex-1 flex-col rounded-[10px] border border-border/70 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">角色列表</p>
+                <h2 className="mt-1 text-xl font-semibold">一个个卡片排布</h2>
               </div>
+              <Button variant="outline" className="h-10 rounded-2xl" onClick={closeRoleList}>
+                返回
+              </Button>
+            </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3 overflow-y-auto pr-1">
-                {characters.map((character, index) => (
-                  <motion.article
-                    key={character.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22 }}
-                    className="overflow-hidden rounded-[10px] border border-border/70 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+            <div className="mt-4 grid grid-cols-2 gap-3 overflow-y-auto pr-1">
+              {characters.map((character, index) => (
+                <motion.article
+                  key={character.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22 }}
+                  className="overflow-hidden rounded-[10px] border border-border/70 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+                >
+                  <button
+                    type="button"
+                    className="block w-full text-left"
+                    onClick={() => {
+                      setCurrentIndex(index)
+                      closeRoleList()
+                    }}
                   >
-                    <button
-                      type="button"
-                      className="block w-full text-left"
-                      onClick={() => {
-                        setCurrentIndex(index)
-                        closeRoleList()
+                    <div className="aspect-[3/4] overflow-hidden">
+                      <img
+                        src={character.image}
+                        alt={character.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-semibold">{character.name}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        {character.note}
+                      </p>
+                    </div>
+                  </button>
+                </motion.article>
+              ))}
+            </div>
+          </section>
+        ) : screen === "detail" ? (
+          <section className="flex min-h-0 flex-1 flex-col">
+            <div
+              className="relative flex min-h-0 flex-1 items-start justify-center overflow-hidden bg-white"
+              onTouchStart={handleDetailTouchStart}
+              onTouchMove={handleDetailTouchMove}
+              onTouchEnd={handleDetailTouchEnd}
+            >
+              <motion.img
+                src={activeCharacter.image}
+                alt={activeCharacter.name}
+                className="max-h-full max-w-full select-none object-contain"
+                draggable={false}
+                animate={{
+                  scale: detailScale,
+                  x: detailOffset.x,
+                  y: detailOffset.y
+                }}
+                transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={zoomOut}>
+                缩小
+              </Button>
+              <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={closeDetail}>
+                返回
+              </Button>
+              <Button className="h-11 flex-1 rounded-2xl" onClick={zoomIn}>
+                放大
+              </Button>
+            </div>
+          </section>
+        ) : (
+          <section className="mt-6 flex min-h-0 flex-1 flex-col rounded-[10px] border border-border/70 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">随机模式</p>
+                <h2 className="mt-1 text-xl font-semibold">老虎机选择角色</h2>
+              </div>
+              <Button variant="outline" className="h-10 rounded-2xl" onClick={closeRandom}>
+                返回
+              </Button>
+            </div>
+
+            <div
+              className="relative mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-[10px] border border-border/70 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.99),_rgba(248,250,252,0.95)_42%,_rgba(226,232,240,0.92)_100%)]"
+              style={{ minHeight: randomTrackMetrics.stageHeight }}
+            >
+              <div className="pointer-events-none absolute inset-[18px] rounded-[10px] border border-slate-200/90" />
+              <div className="absolute inset-0">
+                {currentRandomSlot && randomHighlightCharacter ? (
+                  <motion.div
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[16px] bg-amber-300/20 shadow-[0_0_0_10px_rgba(253,224,71,0.18),0_0_36px_rgba(250,204,21,0.42)]"
+                    animate={{
+                      x: currentRandomSlot.x,
+                      y: currentRandomSlot.y
+                    }}
+                    transition={{
+                      duration: isRandomSpinning ? 0.1 : 0.2,
+                      ease: "easeInOut"
+                    }}
+                    style={{
+                      zIndex: 5,
+                      width: randomTrackMetrics.cardWidth + 10,
+                      height: randomTrackMetrics.cardHeight + 10
+                    }}
+                  />
+                ) : null}
+
+                {availableRandomCharacters.map((character, index) => {
+                  const slot = randomSlots[index]
+                  const isHighlighted =
+                    randomHighlightCharacter?.id === character.id
+
+                  return (
+                    <motion.div
+                      key={character.id}
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[10px] border border-white/80 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+                      animate={{
+                        x: slot?.x ?? 0,
+                        y: slot?.y ?? 0,
+                        scale: isHighlighted ? 1.04 : 1
+                      }}
+                      transition={{ duration: 0.2 }}
+                      style={{
+                        zIndex: 6,
+                        width: randomTrackMetrics.cardWidth,
+                        height: randomTrackMetrics.cardHeight
                       }}
                     >
-                      <div className="aspect-[3/4] overflow-hidden">
+                      <img
+                        src={character.image}
+                        alt={character.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </motion.div>
+                  )
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="relative z-10 flex aspect-[3/4] items-center justify-center overflow-hidden rounded-[10px] border border-slate-300 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.12)] transition active:scale-[0.98]"
+                style={{ width: randomTrackMetrics.centerCardWidth }}
+                onClick={() => {
+                  if (!randomSelectedCharacter || isRandomSpinning) {
+                    return
+                  }
+
+                  openDetail()
+                }}
+              >
+                {randomSelectedCharacter ? (
+                  <img
+                    src={randomSelectedCharacter.image}
+                    alt={randomSelectedCharacter.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-400">
+                    <div className="text-6xl font-semibold">?</div>
+                    <p className="mt-2 text-sm">未知角色</p>
+                  </div>
+                )}
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-2xl"
+                onClick={resetRandomSelection}
+                disabled={isRandomSpinning}
+              >
+                重置
+              </Button>
+              <Button
+                className="h-11 flex-[1.4] rounded-2xl"
+                onClick={startRandomSelection}
+                disabled={isRandomSpinning || availableRandomCharacters.length === 0}
+              >
+                {isRandomSpinning
+                  ? "选择中..."
+                  : availableRandomCharacters.length === 0
+                    ? "已全部选完"
+                  : "开始"}
+              </Button>
+            </div>
+
+            <div className="mt-4 min-h-[132px] rounded-[10px] border border-border/70 bg-slate-50/90 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">已选顺序</p>
+                <p className="text-xs text-muted-foreground">
+                  已选 {selectedCharacters.length} / {characters.length}，剩余{" "}
+                  {availableRandomCharacters.length}
+                </p>
+              </div>
+
+              {selectedCharacters.length > 0 ? (
+                <div className="mt-3 space-y-3">
+                  {selectedCharacters.map((character, index) => (
+                    <div
+                      key={character.id}
+                      className="flex items-center gap-3 rounded-[10px] border border-border/70 bg-white p-2"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+                        {index + 1}
+                      </div>
+                      <div className="h-14 w-11 overflow-hidden rounded-[8px]">
                         <img
                           src={character.image}
                           alt={character.name}
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <div className="p-3">
+                      <div>
                         <p className="text-sm font-semibold">{character.name}</p>
-                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {character.note}
                         </p>
                       </div>
-                    </button>
-                  </motion.article>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className="flex min-h-0 flex-1 flex-col">
-              <div
-                className="relative flex min-h-0 flex-1 items-start justify-center overflow-hidden bg-white"
-                onTouchStart={handleDetailTouchStart}
-                onTouchMove={handleDetailTouchMove}
-                onTouchEnd={handleDetailTouchEnd}
-              >
-                <motion.img
-                  src={activeCharacter.image}
-                  alt={activeCharacter.name}
-                  className="max-h-full max-w-full select-none object-contain"
-                  draggable={false}
-                  animate={{
-                    scale: detailScale,
-                    x: detailOffset.x,
-                    y: detailOffset.y
-                  }}
-                  transition={{ type: "spring", stiffness: 260, damping: 28 }}
-                />
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={zoomOut}>
-                  缩小
-                </Button>
-                <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={closeDetail}>
-                  返回
-                </Button>
-                <Button className="h-11 flex-1 rounded-2xl" onClick={zoomIn}>
-                  放大
-                </Button>
-              </div>
-            </section>
-          )
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-[10px] border border-dashed border-border bg-white/75 px-4 py-6 text-center text-sm text-muted-foreground">
+                  点击开始后，选中的角色会按顺序出现在这里。
+                </div>
+              )}
+            </div>
+          </section>
         )}
       </div>
 

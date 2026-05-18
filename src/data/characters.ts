@@ -1,6 +1,9 @@
 import garyImage from "@/assets/characters/gary.svg"
+import larryImage from "@/assets/characters/larry.svg"
 import krabsImage from "@/assets/characters/mr-krabs.svg"
+import puffImage from "@/assets/characters/mrs-puff.svg"
 import patrickImage from "@/assets/characters/patrick.svg"
+import pearlImage from "@/assets/characters/pearl.svg"
 import planktonImage from "@/assets/characters/plankton.svg"
 import sandyImage from "@/assets/characters/sandy.svg"
 import spongebobImage from "@/assets/characters/spongebob.svg"
@@ -63,5 +66,26 @@ export const initialCharacters: CharacterCard[] = [
     image: garyImage,
     accent: "from-sky-100 via-blue-100 to-cyan-50",
     note: "虽然总是慢悠悠，但只要出现就能稳稳抢走一部分注意力。"
+  },
+  {
+    id: "pearl",
+    name: "珍珍",
+    image: pearlImage,
+    accent: "from-pink-100 via-rose-100 to-fuchsia-50",
+    note: "蟹老板的女儿，出场总带着夸张又直接的青春期能量。"
+  },
+  {
+    id: "mrs-puff",
+    name: "泡芙老师",
+    image: puffImage,
+    accent: "from-amber-100 via-orange-100 to-yellow-50",
+    note: "驾船学校的老师，面对海绵宝宝时常常保持职业又崩溃的微妙平衡。"
+  },
+  {
+    id: "larry",
+    name: "拉里龙虾",
+    image: larryImage,
+    accent: "from-red-100 via-rose-100 to-sky-50",
+    note: "沙滩和健身房里的存在感担当，永远是一副精力过剩的状态。"
   }
 ]
