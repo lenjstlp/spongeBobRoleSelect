@@ -28,17 +28,13 @@ type DetailGestureState = {
 }
 
 type RectangleSlot = {
-  x: number
-  y: number
+  left: number
+  top: number
 }
 
 type RandomTrackMetrics = {
   cardWidth: number
   cardHeight: number
-  stepX: number
-  stepY: number
-  cols: number
-  rows: number
   centerCardWidth: number
   stageHeight: number
 }
@@ -81,154 +77,82 @@ function resolveRoute(pathname: string, characters: CharacterCard[]): RouteState
   return { screen: "home" }
 }
 
-function getBorderGridDimensions(total: number) {
-  const target = Math.max(total, 4)
-  let bestCols = 3
-  let bestRows = 3
-  let bestScore = Number.POSITIVE_INFINITY
-
-  for (let rows = 2; rows <= 7; rows += 1) {
-    for (let cols = 2; cols <= 8; cols += 1) {
-      const capacity = cols * 2 + (rows - 2) * 2
-      if (capacity < target) {
-        continue
-      }
-
-      const overflow = capacity - target
-      const ratioPenalty = Math.abs(cols / rows - 1.2)
-      const shapePenalty = cols < rows ? 0.8 : 0
-      const score = overflow * 100 + ratioPenalty * 18 + cols * rows + shapePenalty
-
-      if (score < bestScore) {
-        bestScore = score
-        bestCols = cols
-        bestRows = rows
-      }
-    }
-  }
-
-  return {
-    cols: bestCols,
-    rows: bestRows
-  }
-}
-
 function getRandomTrackMetrics(total: number): RandomTrackMetrics {
-  const { cols, rows } = getBorderGridDimensions(total)
-
   if (total <= 8) {
-    const cardWidth = 74
-    const cardHeight = 92
-    const stepX = 106
-    const stepY = 122
     return {
-      cardWidth,
-      cardHeight,
-      stepX,
-      stepY,
-      cols,
-      rows,
+      cardWidth: 72,
+      cardHeight: 92,
       centerCardWidth: 132,
-      stageHeight: Math.max(470, (rows - 1) * stepY + cardHeight + 44)
+      stageHeight: 432
     }
   }
 
   if (total <= 12) {
-    const cardWidth = 64
-    const cardHeight = 80
-    const stepX = 86
-    const stepY = 102
     return {
-      cardWidth,
-      cardHeight,
-      stepX,
-      stepY,
-      cols,
-      rows,
+      cardWidth: 62,
+      cardHeight: 80,
       centerCardWidth: 128,
-      stageHeight: Math.max(468, (rows - 1) * stepY + cardHeight + 46)
+      stageHeight: 446
     }
   }
 
-  const cardWidth = 56
-  const cardHeight = 70
-  const stepX = 72
-  const stepY = 86
   return {
-    cardWidth,
-    cardHeight,
-    stepX,
-    stepY,
-    cols,
-    rows,
+    cardWidth: 54,
+    cardHeight: 70,
     centerCardWidth: 122,
-    stageHeight: Math.max(464, (rows - 1) * stepY + cardHeight + 48)
+    stageHeight: 462
   }
 }
 
-function getRectangleSlots(total: number, metrics: RandomTrackMetrics): RectangleSlot[] {
+function getLinePositions(count: number, start: number, end: number) {
+  if (count <= 0) {
+    return []
+  }
+
+  if (count === 1) {
+    return [(start + end) / 2]
+  }
+
+  return Array.from({ length: count }, (_, index) => {
+    return start + ((end - start) * index) / (count - 1)
+  })
+}
+
+function getRectangleSlots(total: number): RectangleSlot[] {
   if (total <= 0) {
     return []
   }
 
-  const borderCells: Array<{ col: number; row: number }> = []
+  const sideInsetX = 10
+  const sideInsetY = 8
+  const leftX = sideInsetX
+  const rightX = 100 - sideInsetX
+  const topY = sideInsetY
+  const bottomY = 100 - sideInsetY
 
-  for (let col = 0; col < metrics.cols; col += 1) {
-    borderCells.push({ col, row: 0 })
-  }
+  const topCount = Math.max(4, Math.ceil(total / 4))
+  const rightCount = Math.max(2, Math.ceil((total - topCount) / 4))
+  const bottomCount = Math.max(4, Math.ceil((total - topCount - rightCount) / 2))
+  const leftCount = Math.max(2, total - topCount - rightCount - bottomCount)
 
-  for (let row = 1; row < metrics.rows - 1; row += 1) {
-    borderCells.push({ col: metrics.cols - 1, row })
-  }
+  const top = getLinePositions(topCount, leftX, rightX).map((left) => ({
+    left,
+    top: topY
+  }))
+  const right = getLinePositions(rightCount, topY + 14, bottomY - 14).map((top) => ({
+    left: rightX,
+    top
+  }))
+  const bottom = getLinePositions(bottomCount, rightX, leftX).map((left) => ({
+    left,
+    top: bottomY
+  }))
+  const left = getLinePositions(leftCount, bottomY - 14, topY + 14).map((top) => ({
+    left: leftX,
+    top
+  }))
 
-  for (let col = metrics.cols - 1; col >= 0; col -= 1) {
-    borderCells.push({ col, row: metrics.rows - 1 })
-  }
-
-  for (let row = metrics.rows - 2; row >= 1; row -= 1) {
-    borderCells.push({ col: 0, row })
-  }
-
-  const middleCol = (metrics.cols - 1) / 2
-  let startIndex = 0
-  let bestDistance = Number.POSITIVE_INFINITY
-
-  for (let index = 0; index < borderCells.length; index += 1) {
-    const cell = borderCells[index]
-    if (cell.row !== 0) {
-      continue
-    }
-
-    const distance = Math.abs(cell.col - middleCol)
-    if (distance < bestDistance) {
-      bestDistance = distance
-      startIndex = index
-    }
-  }
-
-  const orderedBorderCells = [
-    ...borderCells.slice(startIndex),
-    ...borderCells.slice(0, startIndex)
-  ]
-
-  const chosenIndices = new Set<number>()
-
-  return Array.from({ length: total }, (_, index) => {
-    let slotIndex = Math.floor((index * orderedBorderCells.length) / total)
-
-    while (chosenIndices.has(slotIndex)) {
-      slotIndex = (slotIndex + 1) % orderedBorderCells.length
-    }
-
-    chosenIndices.add(slotIndex)
-
-    const cell = orderedBorderCells[slotIndex]
-
-    return {
-      x: (cell.col - (metrics.cols - 1) / 2) * metrics.stepX,
-      y: (cell.row - (metrics.rows - 1) / 2) * metrics.stepY
-    }
-  })
+  return [...top, ...right, ...bottom, ...left].slice(0, total)
 }
 
 export default function App() {
@@ -331,10 +255,7 @@ export default function App() {
           Math.min(randomHighlightIndex, availableRandomCharacters.length - 1)
         ]
   const randomTrackMetrics = getRandomTrackMetrics(availableRandomCharacters.length)
-  const randomSlots = getRectangleSlots(
-    availableRandomCharacters.length,
-    randomTrackMetrics
-  )
+  const randomSlots = getRectangleSlots(availableRandomCharacters.length)
   const currentRandomSlot =
     availableRandomCharacters.length === 0
       ? null
@@ -855,8 +776,7 @@ export default function App() {
           <section className="mt-6 flex min-h-0 flex-1 flex-col rounded-[10px] border border-border/70 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">随机模式</p>
-                <h2 className="mt-1 text-xl font-semibold">老虎机选择角色</h2>
+                <h2 className="text-base font-semibold">随机选择角色</h2>
               </div>
               <Button variant="outline" className="h-10 rounded-2xl" onClick={closeRandom}>
                 返回
@@ -867,24 +787,28 @@ export default function App() {
               className="relative mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-[10px] border border-border/70 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.99),_rgba(248,250,252,0.95)_42%,_rgba(226,232,240,0.92)_100%)]"
               style={{ minHeight: randomTrackMetrics.stageHeight }}
             >
-              <div className="pointer-events-none absolute inset-[18px] rounded-[10px] border border-slate-200/90" />
+              <div className="pointer-events-none absolute inset-[14px] rounded-[10px] border border-slate-300/90" />
+              <div className="pointer-events-none absolute inset-x-[14px] top-[14px] h-[96px] rounded-[10px] border border-slate-200/80" />
+              <div className="pointer-events-none absolute inset-x-[14px] bottom-[14px] h-[96px] rounded-[10px] border border-slate-200/80" />
+              <div className="pointer-events-none absolute inset-y-[110px] left-[14px] w-[72px] rounded-[10px] border border-slate-200/80" />
+              <div className="pointer-events-none absolute inset-y-[110px] right-[14px] w-[72px] rounded-[10px] border border-slate-200/80" />
               <div className="absolute inset-0">
                 {currentRandomSlot && randomHighlightCharacter ? (
                   <motion.div
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[16px] bg-amber-300/20 shadow-[0_0_0_10px_rgba(253,224,71,0.18),0_0_36px_rgba(250,204,21,0.42)]"
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[16px] bg-cyan-400/22 shadow-[0_0_0_10px_rgba(34,211,238,0.18),0_0_32px_rgba(34,211,238,0.35)]"
                     animate={{
-                      x: currentRandomSlot.x,
-                      y: currentRandomSlot.y
+                      left: `${currentRandomSlot.left}%`,
+                      top: `${currentRandomSlot.top}%`
                     }}
                     transition={{
                       duration: isRandomSpinning ? 0.1 : 0.2,
                       ease: "easeInOut"
                     }}
-                    style={{
-                      zIndex: 5,
-                      width: randomTrackMetrics.cardWidth + 10,
-                      height: randomTrackMetrics.cardHeight + 10
-                    }}
+                      style={{
+                        zIndex: 5,
+                        width: randomTrackMetrics.cardWidth + 10,
+                        height: randomTrackMetrics.cardHeight + 10
+                      }}
                   />
                 ) : null}
 
@@ -898,8 +822,8 @@ export default function App() {
                       key={character.id}
                       className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[10px] border border-white/80 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
                       animate={{
-                        x: slot?.x ?? 0,
-                        y: slot?.y ?? 0,
+                        left: `${slot?.left ?? 50}%`,
+                        top: `${slot?.top ?? 50}%`,
                         scale: isHighlighted ? 1.04 : 1
                       }}
                       transition={{ duration: 0.2 }}
@@ -969,13 +893,13 @@ export default function App() {
             </div>
 
             <div className="mt-4 min-h-[132px] rounded-[10px] border border-border/70 bg-slate-50/90 p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">已选顺序</p>
-                <p className="text-xs text-muted-foreground">
-                  已选 {selectedCharacters.length} / {characters.length}，剩余{" "}
-                  {availableRandomCharacters.length}
-                </p>
-              </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">已选顺序</p>
+                  <p className="text-xs text-muted-foreground">
+                    已选 {selectedCharacters.length} / {characters.length}，剩余{" "}
+                    {availableRandomCharacters.length}
+                  </p>
+                </div>
 
               {selectedCharacters.length > 0 ? (
                 <div className="mt-3 space-y-3">

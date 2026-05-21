@@ -1,13 +1,21 @@
-import garyImage from "@/assets/characters/gary.svg"
-import larryImage from "@/assets/characters/larry.svg"
-import krabsImage from "@/assets/characters/mr-krabs.svg"
-import puffImage from "@/assets/characters/mrs-puff.svg"
-import patrickImage from "@/assets/characters/patrick.svg"
-import pearlImage from "@/assets/characters/pearl.svg"
-import planktonImage from "@/assets/characters/plankton.svg"
-import sandyImage from "@/assets/characters/sandy.svg"
-import spongebobImage from "@/assets/characters/spongebob.svg"
-import squidwardImage from "@/assets/characters/squidward.svg"
+import barnacleBoyImage from "@/assets/characters/barnacle-boy.jpg"
+import dirtyBubbleImage from "@/assets/characters/dirty-bubble.png"
+import garyImage from "@/assets/characters/gary.jpg"
+import karenImage from "@/assets/characters/karen.jpg"
+import kingNeptuneImage from "@/assets/characters/king-neptune.jpg"
+import larryImage from "@/assets/characters/larry.png"
+import mermaidManImage from "@/assets/characters/mermaid-man.png"
+import krabsImage from "@/assets/characters/mr-krabs.png"
+import puffImage from "@/assets/characters/mrs-puff.png"
+import patchyAndPottyImage from "@/assets/characters/patchy-and-potty.jpg"
+import patrickImage from "@/assets/characters/patrick.png"
+import pearlImage from "@/assets/characters/pearl.png"
+import planktonImage from "@/assets/characters/plankton.jpg"
+import sandyImage from "@/assets/characters/sandy.png"
+import spongebobImage from "@/assets/characters/spongebob.png"
+import squilliamImage from "@/assets/characters/squilliam.png"
+import squidwardImage from "@/assets/characters/squidward.png"
+import flyingDutchmanImage from "@/assets/characters/the-flying-dutchman.jpg"
 
 export type CharacterCard = {
   id: string
@@ -87,5 +95,61 @@ export const initialCharacters: CharacterCard[] = [
     image: larryImage,
     accent: "from-red-100 via-rose-100 to-sky-50",
     note: "沙滩和健身房里的存在感担当，永远是一副精力过剩的状态。"
+  },
+  {
+    id: "mermaid-man",
+    name: "大洋游侠",
+    image: mermaidManImage,
+    accent: "from-orange-100 via-amber-100 to-yellow-50",
+    note: "比奇堡的老牌英雄，热血和年代感一起拉满，出场自带怀旧气场。"
+  },
+  {
+    id: "barnacle-boy",
+    name: "海超人",
+    image: barnacleBoyImage,
+    accent: "from-blue-100 via-sky-100 to-cyan-50",
+    note: "和大洋游侠搭档多年，表情常常写满无奈，但关键时刻总能接上节奏。"
+  },
+  {
+    id: "the-flying-dutchman",
+    name: "飞天魔鬼",
+    image: flyingDutchmanImage,
+    accent: "from-emerald-100 via-green-100 to-lime-50",
+    note: "幽灵船长式的经典反派，阴森里又带着一股很有辨识度的戏剧感。"
+  },
+  {
+    id: "patchy-and-potty",
+    name: "海盗派奇和鹦鹉芭迪",
+    image: patchyAndPottyImage,
+    accent: "from-amber-100 via-orange-100 to-red-50",
+    note: "真人段落里的高频组合，一个热情过头，一个负责把场面搅得更乱。"
+  },
+  {
+    id: "king-neptune",
+    name: "海神王",
+    image: kingNeptuneImage,
+    accent: "from-cyan-100 via-sky-100 to-blue-50",
+    note: "掌控海洋秩序的大人物，出场时总带着一种高压又夸张的王者姿态。"
+  },
+  {
+    id: "karen",
+    name: "凯伦",
+    image: karenImage,
+    accent: "from-slate-100 via-zinc-100 to-neutral-50",
+    note: "痞老板最稳定也最毒舌的搭档，冷静输出往往比计划本身更有杀伤力。"
+  },
+  {
+    id: "dirty-bubble",
+    name: "邪恶泡泡",
+    image: dirtyBubbleImage,
+    accent: "from-purple-100 via-fuchsia-100 to-pink-50",
+    note: "经典反派形象之一，夸张的压迫感和荒诞感混在一起，非常抓眼。"
+  },
+  {
+    id: "squilliam",
+    name: "章鱼威廉",
+    image: squilliamImage,
+    accent: "from-teal-100 via-emerald-100 to-cyan-50",
+    note: "章鱼哥最不想遇到的成功样板，永远用一种体面的方式把压迫感拉满。"
   }
 ]
