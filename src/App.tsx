@@ -1,14 +1,8 @@
 import { AnimatePresence, motion } from "motion/react"
-import { ChangeEvent, FormEvent, TouchEvent, useEffect, useRef, useState } from "react"
+import { TouchEvent, useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { initialCharacters, type CharacterCard } from "@/data/characters"
-
-type FormState = {
-  name: string
-  image: string
-  note: string
-}
 
 type Screen = "home" | "list" | "detail" | "random"
 
@@ -158,7 +152,6 @@ function getRectangleSlots(total: number): RectangleSlot[] {
 export default function App() {
   const [characters, setCharacters] = useState(initialCharacters)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [rotateIntervalSeconds, setRotateIntervalSeconds] = useState<number>(3)
   const [screen, setScreen] = useState<Screen>(() =>
     typeof window === "undefined"
@@ -181,12 +174,7 @@ export default function App() {
     startOffsetY: 0
   })
   const [detailScale, setDetailScale] = useState(1)
-  const [detailOffset, setDetailOffset] = useState({ x: 0, y: 0 })
-  const [formState, setFormState] = useState<FormState>({
-    name: "",
-    image: "",
-    note: ""
-  })
+  const [detailPosition, setDetailPosition] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
     if (
@@ -321,7 +309,7 @@ export default function App() {
 
   function openDetail() {
     setDetailScale(1)
-    setDetailOffset({ x: 0, y: 0 })
+    setDetailPosition({ x: 0, y: 0 })
     window.history.pushState({}, "", `/roles/${encodeURIComponent(activeCharacter.id)}`)
     setScreen("detail")
   }
@@ -335,7 +323,7 @@ export default function App() {
     window.history.pushState({}, "", "/")
     setScreen("home")
     setDetailScale(1)
-    setDetailOffset({ x: 0, y: 0 })
+    setDetailPosition({ x: 0, y: 0 })
   }
 
   function closeRandom() {
@@ -347,6 +335,11 @@ export default function App() {
 
   function clampScale(nextScale: number) {
     return Math.min(4, Math.max(1, nextScale))
+  }
+
+  function resetDetailView() {
+    setDetailScale(1)
+    setDetailPosition({ x: 0, y: 0 })
   }
 
   function getTouchDistance(event: TouchEvent<HTMLDivElement>) {
@@ -370,8 +363,8 @@ export default function App() {
         startY: 0,
         startScale: detailScale,
         startDistance: getTouchDistance(event),
-        startOffsetX: detailOffset.x,
-        startOffsetY: detailOffset.y
+        startOffsetX: detailPosition.x,
+        startOffsetY: detailPosition.y
       }
       return
     }
@@ -383,8 +376,8 @@ export default function App() {
         startY: event.touches[0].clientY,
         startScale: detailScale,
         startDistance: 0,
-        startOffsetX: detailOffset.x,
-        startOffsetY: detailOffset.y
+        startOffsetX: detailPosition.x,
+        startOffsetY: detailPosition.y
       }
     }
   }
@@ -402,12 +395,12 @@ export default function App() {
       return
     }
 
-    if (detailGestureRef.current.mode === "pan" && event.touches.length === 1 && detailScale > 1) {
+    if (detailGestureRef.current.mode === "pan" && event.touches.length === 1) {
       event.preventDefault()
       const deltaX = event.touches[0].clientX - detailGestureRef.current.startX
       const deltaY = event.touches[0].clientY - detailGestureRef.current.startY
 
-      setDetailOffset({
+      setDetailPosition({
         x: detailGestureRef.current.startOffsetX + deltaX,
         y: detailGestureRef.current.startOffsetY + deltaY
       })
@@ -416,20 +409,6 @@ export default function App() {
 
   function handleDetailTouchEnd() {
     detailGestureRef.current.mode = "idle"
-  }
-
-  function zoomIn() {
-    setDetailScale((current) => clampScale(current + 0.25))
-  }
-
-  function zoomOut() {
-    setDetailScale((current) => {
-      const nextScale = clampScale(current - 0.25)
-      if (nextScale === 1) {
-        setDetailOffset({ x: 0, y: 0 })
-      }
-      return nextScale
-    })
   }
 
   function clearRandomTimers() {
@@ -487,45 +466,6 @@ export default function App() {
     setRandomResultId(null)
     setRandomHighlightIndex(0)
     setSelectedRoleIds([])
-  }
-
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) {
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result
-      if (typeof result === "string") {
-        setFormState((current) => ({ ...current, image: result }))
-      }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const nextName = formState.name.trim()
-    const nextNote = formState.note.trim()
-    if (!nextName || !formState.image || !nextNote) {
-      return
-    }
-
-    const nextCharacter: CharacterCard = {
-      id: `${nextName}-${Date.now()}`,
-      name: nextName,
-      image: formState.image,
-      accent: "from-slate-100 via-sky-50 to-cyan-50",
-      note: nextNote
-    }
-
-    setCharacters((current) => [...current, nextCharacter])
-    setCurrentIndex(characters.length)
-    setFormState({ name: "", image: "", note: "" })
-    setIsDrawerOpen(false)
   }
 
   return (
@@ -684,12 +624,6 @@ export default function App() {
               </div>
             </section>
 
-            <Button
-              className="h-[52px] w-full rounded-2xl"
-              onClick={() => setIsDrawerOpen(true)}
-            >
-              新增角色
-            </Button>
           </div>
         ) : screen === "list" ? (
           <section className="mt-6 flex min-h-0 flex-1 flex-col rounded-[10px] border border-border/70 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
@@ -717,7 +651,7 @@ export default function App() {
                     className="block w-full text-left"
                     onClick={() => {
                       setCurrentIndex(index)
-                      closeRoleList()
+                      openDetail()
                     }}
                   >
                     <div className="aspect-[3/4] overflow-hidden">
@@ -741,7 +675,7 @@ export default function App() {
         ) : screen === "detail" ? (
           <section className="flex min-h-0 flex-1 flex-col">
             <div
-              className="relative flex min-h-0 flex-1 items-start justify-center overflow-hidden bg-white"
+              className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-white"
               onTouchStart={handleDetailTouchStart}
               onTouchMove={handleDetailTouchMove}
               onTouchEnd={handleDetailTouchEnd}
@@ -749,26 +683,27 @@ export default function App() {
               <motion.img
                 src={activeCharacter.image}
                 alt={activeCharacter.name}
-                className="max-h-full max-w-full select-none object-contain"
+                className="select-none object-contain"
                 draggable={false}
                 animate={{
                   scale: detailScale,
-                  x: detailOffset.x,
-                  y: detailOffset.y
+                  x: detailPosition.x,
+                  y: detailPosition.y
                 }}
                 transition={{ type: "spring", stiffness: 260, damping: 28 }}
+                style={{
+                  width: "min(100%, 100vw - 40px)",
+                  maxHeight: "calc(100dvh - 180px)"
+                }}
               />
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-3">
-              <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={zoomOut}>
-                缩小
-              </Button>
               <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={closeDetail}>
                 返回
               </Button>
-              <Button className="h-11 flex-1 rounded-2xl" onClick={zoomIn}>
-                放大
+              <Button variant="outline" className="h-11 flex-1 rounded-2xl" onClick={resetDetailView}>
+                复原
               </Button>
             </div>
           </section>
@@ -937,103 +872,6 @@ export default function App() {
         )}
       </div>
 
-      <AnimatePresence>
-        {isDrawerOpen ? (
-          <>
-            <motion.button
-              aria-label="关闭新增角色表单"
-              className="fixed inset-0 bg-black/28"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsDrawerOpen(false)}
-            />
-            <motion.section
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-md rounded-t-[30px] border border-border bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-4 shadow-[0_-18px_48px_rgba(15,23,42,0.18)]"
-            >
-              <div className="mx-auto h-1.5 w-14 rounded-full bg-slate-200" />
-              <div className="mt-4">
-                <p className="text-xs text-muted-foreground">角色表单</p>
-                <h4 className="mt-2 text-xl font-semibold">新增角色</h4>
-              </div>
-
-              <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium">名称</span>
-                  <input
-                    required
-                    value={formState.name}
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                        ...current,
-                        name: event.target.value
-                      }))
-                    }
-                    placeholder="输入角色名称"
-                    className="h-12 w-full rounded-2xl border border-border bg-white px-4 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium">角色介绍</span>
-                  <textarea
-                    required
-                    value={formState.note}
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                        ...current,
-                        note: event.target.value
-                      }))
-                    }
-                    placeholder="输入简短角色介绍"
-                    rows={3}
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium">图片</span>
-                  <input
-                    required
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="block w-full rounded-2xl border border-dashed border-border bg-slate-50 px-4 py-3 text-sm text-muted-foreground file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
-                  />
-                </label>
-
-                {formState.image ? (
-                  <div className="overflow-hidden rounded-[24px] border border-border">
-                    <img
-                      src={formState.image}
-                      alt="新角色预览"
-                      className="aspect-[4/5] w-full object-cover"
-                    />
-                  </div>
-                ) : null}
-
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 flex-1 rounded-2xl"
-                    onClick={() => setIsDrawerOpen(false)}
-                  >
-                    取消
-                  </Button>
-                  <Button type="submit" className="h-12 flex-1 rounded-2xl">
-                    保存角色
-                  </Button>
-                </div>
-              </form>
-            </motion.section>
-          </>
-        ) : null}
-      </AnimatePresence>
     </main>
   )
 }
