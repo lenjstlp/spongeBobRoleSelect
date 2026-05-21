@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react"
-import { TouchEvent, useEffect, useRef, useState } from "react"
+import { TouchEvent, WheelEvent, useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { initialCharacters, type CharacterCard } from "@/data/characters"
@@ -411,6 +411,12 @@ export default function App() {
     detailGestureRef.current.mode = "idle"
   }
 
+  function handleDetailWheel(event: WheelEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const delta = event.deltaY < 0 ? 0.12 : -0.12
+    setDetailScale((current) => clampScale(current + delta))
+  }
+
   function clearRandomTimers() {
     if (randomTimeoutRef.current !== null) {
       window.clearTimeout(randomTimeoutRef.current)
@@ -481,7 +487,7 @@ export default function App() {
             <h1 className="text-2xl font-semibold tracking-tight">角色选择器</h1>
             <button
               type="button"
-              className="rounded-full border border-border/80 bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition hover:bg-slate-50"
+              className="inline-flex h-10 items-center rounded-full bg-cyan-500 px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(6,182,212,0.28)] transition hover:bg-cyan-500/90 active:scale-[0.98]"
               onClick={openRoleList}
             >
               {characters.length} 个角色
@@ -679,12 +685,11 @@ export default function App() {
               onTouchStart={handleDetailTouchStart}
               onTouchMove={handleDetailTouchMove}
               onTouchEnd={handleDetailTouchEnd}
+              onWheel={handleDetailWheel}
+              style={{ touchAction: "none" }}
             >
-              <motion.img
-                src={activeCharacter.image}
-                alt={activeCharacter.name}
-                className="select-none object-contain"
-                draggable={false}
+              <motion.div
+                className="flex items-center justify-center"
                 animate={{
                   scale: detailScale,
                   x: detailPosition.x,
@@ -695,7 +700,14 @@ export default function App() {
                   width: "min(100%, 100vw - 40px)",
                   maxHeight: "calc(100dvh - 180px)"
                 }}
-              />
+              >
+                <img
+                  src={activeCharacter.image}
+                  alt={activeCharacter.name}
+                  className="block max-h-[calc(100dvh-180px)] max-w-full select-none object-contain"
+                  draggable={false}
+                />
+              </motion.div>
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-3">

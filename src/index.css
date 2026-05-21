@@ -58,12 +58,14 @@
   html {
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     margin: 0;
     min-width: 320px;
+    overscroll-behavior: none;
   }
 
   button,
@@ -75,5 +77,6 @@
 
   #root {
     min-height: 100dvh;
+    overscroll-behavior: none;
   }
 }
