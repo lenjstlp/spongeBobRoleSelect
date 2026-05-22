@@ -613,8 +613,7 @@ export default function App() {
 
                 <div className="mt-4 flex justify-center">
                   <Button
-                    variant="outline"
-                    className="h-11 rounded-full px-6"
+                    className="h-11 rounded-full bg-cyan-500 px-7 text-white shadow-[0_10px_24px_rgba(6,182,212,0.28)] transition hover:bg-cyan-500/90 active:scale-[0.98]"
                     onClick={openRandom}
                   >
                     随机选择
