@@ -642,14 +642,14 @@ export default function App() {
               </Button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 overflow-y-auto pr-1">
+            <div className="mt-4 columns-2 gap-3 overflow-y-auto pr-1 [column-fill:_balance]">
               {characters.map((character, index) => (
                 <motion.article
                   key={character.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.22 }}
-                  className="overflow-hidden rounded-[10px] border border-border/70 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+                  className="mb-3 break-inside-avoid overflow-hidden rounded-[10px] border border-border/70 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
                 >
                   <button
                     type="button"
@@ -659,7 +659,19 @@ export default function App() {
                       openDetail()
                     }}
                   >
-                    <div className="aspect-[3/4] overflow-hidden">
+                    <div
+                      className="overflow-hidden"
+                      style={{
+                        aspectRatio:
+                          index % 5 === 0
+                            ? "3 / 4.6"
+                            : index % 3 === 0
+                              ? "3 / 4.2"
+                              : index % 2 === 0
+                                ? "3 / 3.85"
+                                : "3 / 4.4"
+                      }}
+                    >
                       <img
                         src={character.image}
                         alt={character.name}
